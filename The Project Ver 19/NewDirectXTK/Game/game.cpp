@@ -101,8 +101,8 @@ Game::Game(ID3D11Device* _pd3dDevice, HWND _hWnd, HINSTANCE _hInstance) :m_playT
 	m_grid = new Grid(_pd3dDevice, m_GD);
 	m_GameObject2Ds.push_back(m_grid);
 
-	m_cursor = new Cursor("Cursor", _pd3dDevice, Vector2::One, Vector2(0.25f, 0.25f));
-	m_GameObject2Ds.push_back(m_cursor);
+	/*m_cursor = new Cursor("Cursor", _pd3dDevice, Vector2::One, Vector2(0.25f, 0.25f));
+	m_GameObject2Ds.push_back(m_cursor);*/
 
 
 	//Text settings
@@ -115,21 +115,45 @@ Game::Game(ID3D11Device* _pd3dDevice, HWND _hWnd, HINSTANCE _hInstance) :m_playT
 	m_GameObject2Ds.push_back(m_MouseText);
 
 	//Help Menu
-	m_Text = "Press F1 for Help Menu";
-	m_F1Text = new Text(m_Text, Vector2(width - 200, 0.0f), m_tempscale, m_tempcolour);
-	m_GameObject2Ds.push_back(m_F1Text);
-
+	
 	m_Text = "Help Menu";
-	m_HelpTextTitle = new Text(m_Text, Vector2(width - 200, 0.0f), m_tempscale, m_tempcolour);
+	m_HelpTextTitle = new Text(m_Text, Vector2(width - 200, 20.0f), m_tempscale, m_tempcolour);
+	m_Text = "T - Toggle Grid MoveCost";
+	m_GridText = new Text(m_Text, Vector2(width - 200, 30.0f), m_tempscale, m_tempcolour);
+
+	m_Text = "O - SPEED UP";
+	m_SpeedUpText = new Text(m_Text, Vector2(width - 200, 50.0f), m_tempscale, m_tempcolour);
+	m_Text = "I - SLOW DOWN";
+	m_SlowDownText = new Text(m_Text, Vector2(width - 200, 60.0f), m_tempscale, m_tempcolour);
+	m_Text = "PAUSE";
+	m_PauseText = new Text(m_Text, Vector2(width - 200, 70.0f), m_tempscale, m_tempcolour);
+	m_Text = "Game Speed : " + std::to_string(m_GD->m_t);
+	m_GameSpeedText = new Text(m_Text, Vector2(width - 200, 90.0f), m_tempscale, m_tempcolour);
+	
+	m_Text = "Terminal Debug";
+	m_CMDTitle = new Text(m_Text, Vector2(width - 200, 110.0f), m_tempscale, m_tempcolour);
+	m_Text = "1 - Print Grid";
+	m_1Print = new Text(m_Text, Vector2(width - 200, 120.0f), m_tempscale, m_tempcolour);
+	m_Text = "2 - Print Est Cost";
+	m_2Print = new Text(m_Text, Vector2(width - 200, 130.0f), m_tempscale, m_tempcolour);
+	m_Text = "3 - Print Move Cost";
+	m_3Print = new Text(m_Text, Vector2(width - 200, 140.0f), m_tempscale, m_tempcolour);
+	m_Text = "4 - Print Total Cost";
+	m_4Print = new Text(m_Text, Vector2(width - 200, 150.0f), m_tempscale, m_tempcolour);
+
+
+	//push all text to the gameoobject list
 	m_GameObject2Ds.push_back(m_HelpTextTitle);
-
-	//T - grid values
-	//R - Reset game
-	//1,2,3... CMD grids
-
-	//Mouse Poz
-	//Gamespeed
-	//
+	m_GameObject2Ds.push_back(m_GridText);
+	m_GameObject2Ds.push_back(m_SpeedUpText);
+	m_GameObject2Ds.push_back(m_SlowDownText);
+	m_GameObject2Ds.push_back(m_PauseText);
+	m_GameObject2Ds.push_back(m_GameSpeedText);
+	m_GameObject2Ds.push_back(m_CMDTitle);
+	m_GameObject2Ds.push_back(m_1Print);
+	m_GameObject2Ds.push_back(m_2Print);
+	m_GameObject2Ds.push_back(m_3Print);
+	m_GameObject2Ds.push_back(m_4Print);
 
 
 	//lastly set the gamestate to costsetup
@@ -220,23 +244,28 @@ bool Game::Update()
 
 
 	//Updates the mouse XY pos
-
-	float speed = 5.0f;
+	//Mouse position doesn't match up in release
 	POINT p;
+#ifdef DEBUG
 	GetCursorPos(&p);
 	ScreenToClient(m_hWnd, &p);
-	//ClientToScreen(m_hWnd, &p);
+#else
+	GetCursorPos(&p);
+#endif
 
 
-	m_GD->m_mousePosX = (long)p.x;//+= speed * m_GD->m_mouseState->lX;
-	m_GD->m_mousePosY = (long)p.y;// += speed * m_GD->m_mouseState->lY;
 
-	if (m_GD->m_HelpText)
-	{
+	m_GD->m_mousePosX = (long)p.x;
+	m_GD->m_mousePosY = (long)p.y;
+
+
 		m_Text = "Mouse XY: " + std::to_string(p.x / 50) + " | " + std::to_string(p.y / 50);
 		m_MouseText->setText(m_Text);
-	}
 
+		m_Text = "Game Speed : " + std::to_string(m_GD->m_t);
+		m_GameSpeedText->setText(m_Text);
+
+	
 	if (m_GD->m_mouseState->rgbButtons[0] /*&& !m_GD->m_MouseLeftClick*/)
 	{
 		m_GD->m_MouseLeftClick = true;
@@ -282,7 +311,7 @@ void Game::KeyboardInput()
 			m_GD->m_Pause = false;
 		else
 			m_GD->m_Pause = true;
-		
+
 	}
 	//Decreases game speed
 	if ((m_keyboardState[DIK_I] & 0x80) && !(m_prevKeyboardState[DIK_I] & 0x80))
@@ -309,11 +338,16 @@ void Game::KeyboardInput()
 		else
 			m_GD->m_TextToggle = true;
 	}
+
 	//Reset Map, clears all objects and respawns a new map
-	if ((m_keyboardState[DIK_R] & 0x80) && !(m_prevKeyboardState[DIK_R] & 0x80))
+	/*Doesn't clean up the map, objects are being turned off*/
+	/*if ((m_keyboardState[DIK_R] & 0x80) && !(m_prevKeyboardState[DIK_R] & 0x80))
 	{
-		m_GD->m_Reset = true;
-	}
+		if (!m_GD->m_HelpText)
+			m_GD->m_GS = GS_RESET;
+	}*/
+
+
 	// 1-4 of the different CMD Terminal displays
 	//1 - prints basic grid with objets, path, goal and NPC
 	if ((m_keyboardState[DIK_1] & 0x80) && !(m_prevKeyboardState[DIK_1] & 0x80))
@@ -336,7 +370,7 @@ void Game::KeyboardInput()
 		m_GD->m_DebugPrint = 4;
 	}
 
-	
+
 
 }
 

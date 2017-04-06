@@ -65,27 +65,17 @@ Grid::~Grid()
 
 }*/
 
-void Grid::SetLocation(Vector2 _Pos, GameType _GT) //dont need most of this function
+/*Sets the location of object*/
+void Grid::SetLocation(Vector2 _Pos, GameType _GT) 
 {
 	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
 	{
 		if ((*it)->GetCellPos() == _Pos)
 		{
-			/*switch (_GT) // this isn't needed
-			{
-			case GT_NPC:(*it)->setNPCLoc();
-				break;
-			case GT_GOAL:(*it)->setGoalLoc();
-				break;
-			case GT_OBJECT:(*it)->setObjectlLoc();
-				m_Object.at((*it)->GetVecLoc())->setIsAlive(true);
-				break;
-			}*/
-			(*it)->setGameType(_GT); //this is needed 
+			(*it)->setGameType(_GT); 
 		}
 	}
 }
-
 
 
 void Grid::Tick(GameData * _GD)
@@ -95,24 +85,18 @@ void Grid::Tick(GameData * _GD)
 	m_Totaltime = m_TimeEnd - _GD->m_TimeValue;
 
 
-	if ((m_Totaltime.count() >= _GD->m_t)&& !_GD->m_Pause)
+	if ((m_Totaltime.count() >= _GD->m_t) && !_GD->m_Pause)
 	{
-
-		//Debug print function
-		//PrintGrid(_GD);
-		//std::cout << Find(GT_NPC) << std::endl;
-
-
 		switch (_GD->m_GS)
 		{
-		case GS_COSTSETUP:
+		case GS_COSTSETUP: //calculate the cost from goal
 			EstMoveCost(_GD, Find(GT_GOAL));
 			setNPCLoc(Find(GT_NPC));
 			break;
-		case GS_SCAN:
+		case GS_SCAN: //Scan from NPC searching for the goal
 			MoveCost(_GD, getNPCLoc());
 			break;
-		case GS_PLAY:
+		case GS_PLAY: //Move the player
 			MovePlayer(_GD);
 			break;
 		case GS_RESCAN: // replace the goal and clean all of the costs
@@ -120,9 +104,7 @@ void Grid::Tick(GameData * _GD)
 			CleanVectors(); //clears the values in the open list and closed list
 			RescanCleanCost();
 			ReplaceGoal(_GD);
-			_GD->m_GS = GS_COSTSETUP;
-			m_runthough++;
-			//std::cout << m_runthough << std::endl;
+			_GD->m_GS = GS_COSTSETUP;			
 			break;
 		case GS_CLEAN: //clean out the cost values
 			RescanCleanCost();
@@ -130,15 +112,19 @@ void Grid::Tick(GameData * _GD)
 			break;
 		case GS_DYNAMIC_RESCAN: //recalculate the movement cost
 			MoveCost(_GD, getNPCLoc());
-			
 			break;
 		case GS_RESET://reset the map
-			
 			// clean the map of all GS and set taken to false
 			CleanGrid();
+			CleanUpdate();
 			// respwan NPC
+			Vector2 m_tempLoc = Check(_GD);
+			SetLocation(m_tempLoc, GT_NPC);
 			// respawn Goal
+			m_tempLoc = Check(_GD);
+			SetLocation(m_tempLoc, GT_GOAL);
 			// respawn Object
+			SetUpObject(_GD);
 			// set GS to costsetup
 			_GD->m_GS = GS_COSTSETUP;
 			break;
@@ -164,35 +150,18 @@ void Grid::Tick(GameData * _GD)
 
 
 		 //Help menu CMD print grid
-		if (_GD->m_HelpText)
+		switch (_GD->m_DebugPrint)
 		{
-			switch (_GD->m_DebugPrint)
-			{
-			case 1: PrintGrid(_GD);
-				break;
-			case 2:PrintEstCost(_GD);
-				break;
-			case 3:PrintMoveCost(_GD);
-				break;
-			case 4:PrintTotalCost(_GD);
-				break;
-			}
+		case 1: PrintGrid(_GD);
+			break;
+		case 2:PrintEstCost(_GD);
+			break;
+		case 3:PrintMoveCost(_GD);
+			break;
+		case 4:PrintTotalCost(_GD);
+			break;
 		}
-		else
-		{ //cleans screen the exact amount of the Terminal saving time & proccesses
-			CONSOLE_SCREEN_BUFFER_INFO m_CSBI;
-			GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &m_CSBI);
-			int m_CMDHeight = m_CSBI.srWindow.Bottom - m_CSBI.srWindow.Top + 1;
-			for (int i = 0; i < (m_CMDHeight); i++)
-			{
-				std::cout<<std::endl;
-			}
-		}
-
 	}
-
-	
-
 
 }
 
@@ -222,7 +191,7 @@ void Grid::Draw(DrawData2D* _DD2D)
 }
 
 void Grid::UpdatePos()
-{//Visuals
+{//Updates the images position
 	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
 	{
 		switch ((*it)->getGameType())
@@ -242,8 +211,29 @@ void Grid::UpdatePos()
 	}
 }
 
+void Grid::CleanUpdate()
+{//For reset to clean up the grid **Does not work**
+	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
+	{
+		switch ((*it)->getGameType())
+		{
+		case GT_NPC:m_NPC->setNPCPos((*it)->GetCellPos());
+			break;
+		case GT_GOAL:m_Goal->setGoalPos((*it)->GetCellPos());
+			break;
+		case GT_PATH:m_Path.at((*it)->GetVecLoc())->setIsAlive(false);
+			break;
+		case GT_OBJECT:(*it)->setObjectlLoc();
+			m_Object.at((*it)->GetVecLoc())->setIsAlive(false);
+			break;
+		default: m_Path.at((*it)->GetVecLoc())->setIsAlive(false);
+			break;
+		}
+	}
+}
 
-//Find Functions
+
+//Find Functions- Finds the gametype in vector
 int Grid::Find(GameType _GT)
 {
 	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
@@ -272,6 +262,7 @@ int Grid::Find(GameType _GT)
 	}
 }
 
+//Finds the Vector2 coordinates in vector
 int Grid::FindGridPos(Vector2 _Pos)
 {
 	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
@@ -477,7 +468,7 @@ void Grid::OpenList(Cell* _OpenList)
 
 
 
-
+//checks the surrounding cells for the minimum value
 int Grid::CheckMinValue(vector<int> _list)
 {
 	int m_value = 1000;
@@ -497,7 +488,7 @@ int Grid::CheckMinValue(vector<int> _list)
 					{
 						m_list ++ ;
 					}*/
-					if (m_Cell.at(_list.at(m_list))->GetTotalMoveCost() < m_value)
+					if (m_Cell.at(_list.at(m_list))->GetTotalMoveCost() <= m_value)
 					{
 						m_value = m_Cell.at(_list.at(m_list))->GetTotalMoveCost();
 						m_cellValue = m_list;
@@ -505,7 +496,6 @@ int Grid::CheckMinValue(vector<int> _list)
 				}
 			}
 		}
-		//m_Debuglist = m_cellValue;
 	}
 	return m_cellValue;
 }
@@ -749,7 +739,7 @@ void Grid::EstMoveCost(GameData * _GD, int _VectorLoc)
 }
 
 void Grid::TotalMoveCost(Cell* _Cell)
-{
+{//Adds movecost to est cost to make the total move cost
 	_Cell->SetTotalMoveCost(_Cell->GetMoveCost() + _Cell->GetEstMoveCost());
 }
 
@@ -768,7 +758,7 @@ void Grid::MovePlayer(GameData* _GD)
 		return;
 	}
 	m_Cell.at(m_ClosedList.at(0)->GetVecLoc())->setGameType(GT_FREE); //find current NPC location and change it to free
-
+	m_Cell.at(m_ClosedList.at(0)->GetVecLoc())->setTaken(false);
 	m_Cell.at(m_ClosedList.at(1)->GetVecLoc())->setGameType(GT_NPC); // set the NPC to next location in closed list
 	m_ClosedList.erase(m_ClosedList.begin()); //erase the beginning item as is not needed.
 
@@ -790,7 +780,7 @@ void Grid::Cleancost()
 }
 
 void Grid::RescanCleanCost()
-{
+{//cleans everything off of the grid **Reset does not work**
 	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
 	{
 		(*it)->SetMoveCost(0);
@@ -801,11 +791,6 @@ void Grid::RescanCleanCost()
 		{
 			(*it)->setGameType(GT_FREE);
 		}
-		/*else if ((*it)->getGameType() == GT_GOAL)
-		{
-			(*it)->setGameType(GT_FREE);
-		}*/
-
 		CleanVectors();
 	}
 }
@@ -850,7 +835,7 @@ void Grid::Cursor(GameData * _GD)
 //Clean and reset
 void Grid::CleanGrid()
 {
-	for (auto it = m_Cell.begin(); it != m_Cell.end(); it ++ )
+	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
 	{
 		(*it)->setGameType(GT_FREE);
 		(*it)->setTaken(false);
@@ -858,12 +843,12 @@ void Grid::CleanGrid()
 }
 
 void Grid::SetUpObject(GameData* _GD)
-{
-	for (int m_objectAmount = 0; m_objectAmount < _GD->m_scrWidth * 2; m_objectAmount++)
+{//Sets up onjects onto the Map **was going to be used in reset**
+	for (int m_objectAmount = 0; m_objectAmount < _GD->m_scrWidth; m_objectAmount++)
 	{
 		Vector2 m_tempLoc = Check(_GD);
 		SetLocation(m_tempLoc, GT_OBJECT);
-		
+
 	}
 }
 
@@ -928,10 +913,9 @@ void Grid::PrintMoveCost(GameData* _GD)
 
 	for (auto it = m_Cell.begin(); it != m_Cell.end(); it++)
 	{
-		if ((*it)->GetMoveCost() != 0)
-			printf("%3d ", (*it)->GetMoveCost());
-		else
-			std::cout << " ";
+
+		printf("%3d ", (*it)->GetMoveCost());
+
 
 		i++;
 		if (i == _GD->m_scrWidth)

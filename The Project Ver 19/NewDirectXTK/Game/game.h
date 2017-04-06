@@ -68,7 +68,7 @@ protected:
 
 	list<GameObject *> m_GameObjects; //data structure storing all GameObjects of this Game
 	list<GameObject2D *> m_GameObject2Ds;//ditto 2D objects
-
+	
 	
 
 	//required for the CMO model rendering system
@@ -93,8 +93,21 @@ protected:
 	Grid* m_grid;
 
 	Text* m_MouseText;
-	Text* m_F1Text;
 	Text* m_HelpTextTitle;
+	Text* m_GridText;
+	Text* m_SpeedUpText;
+	Text* m_SlowDownText;
+	Text* m_PauseText;
+	Text* m_GameSpeedText;
+
+	Text* m_CMDTitle;
+	Text* m_1Print;
+	Text* m_2Print;
+	Text* m_3Print;
+	Text* m_4Print;
+
+	
+
 
 
 	Cursor* m_cursor;

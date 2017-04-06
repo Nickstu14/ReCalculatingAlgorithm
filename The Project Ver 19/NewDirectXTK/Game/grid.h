@@ -75,11 +75,12 @@ public:
 	void CleanVectors() { m_OpenList.clear(); m_ClosedList.clear(); }
 
 	void ReplaceGoal(GameData* _GD);
-	void Recalculate(GameData* _GD);
+	
 
 	void Cursor(GameData* _GD);
 
 	void CleanGrid();
+	void CleanUpdate();
 	
 
 
